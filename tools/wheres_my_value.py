@@ -20,6 +20,9 @@ import threading
 from dataclasses import dataclass
 from collections import defaultdict
 
+# Default maximum pages to crawl
+MAX_PAGES = 5000
+
 # Common non-HTML file extensions to skip
 SKIP_EXTENSIONS = {
     # Images
@@ -30,10 +33,10 @@ SKIP_EXTENSIONS = {
     '.zip', '.rar', '.7z', '.tar', '.gz',
     # Media
     '.mp3', '.mp4', '.wav', '.avi', '.mov',
-    # Code and Data
-    '.css', '.js', '.json', '.xml', '.csv', '.txt',
-    # Other
-    '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map'
+    # Fonts and Icons
+    '.ico', '.woff', '.woff2', '.ttf', '.eot',
+    # Source maps
+    '.map'
 }
 
 # Default headers
@@ -70,7 +73,7 @@ class CrawlerStats:
         self.error_log: List[str] = []
         self._lock = threading.Lock()
         self._last_print_time = 0
-        self._last_pages = 0
+        self._last_percentage = 0
 
     def increment_pages(self) -> None:
         with self._lock:
@@ -84,32 +87,26 @@ class CrawlerStats:
     def get_elapsed_time(self) -> float:
         return time.time() - self.start_time
 
-    def get_pages_per_minute(self) -> float:
-        elapsed = self.get_elapsed_time()
-        return self.pages_visited / (elapsed / 60) if elapsed > 0 else 0
-
-    def should_print_progress(self, total: int, sleep_time: float) -> bool:
-        current_time = time.time()
-        time_elapsed = current_time - self._last_print_time >= sleep_time
-        pages_changed = self.pages_visited > self._last_pages
+    def should_print_progress(self, total: int) -> bool:
+        current_percentage = (self.pages_visited / total) * 100
+        progress_change = current_percentage - self._last_percentage
         
-        if time_elapsed and pages_changed:
-            self._last_print_time = current_time
-            self._last_pages = self.pages_visited
+        if progress_change >= 0.5:  # Only update when there's at least 0.5% progress
+            self._last_percentage = current_percentage
             return True
         return False
 
 def print_progress(stats: CrawlerStats, total: int, sleep_time: float, bar_length: int = 50) -> None:
-    if not stats.should_print_progress(total, sleep_time):
+    if not stats.should_print_progress(total):
         return
         
     percentage = (stats.pages_visited / total) * 100
     filled_length = int(bar_length * stats.pages_visited // total)
     bar = '=' * filled_length + '-' * (bar_length - filled_length)
     
-    print(f'\rProgress: [{bar}] {percentage:.1f}% | {stats.pages_visited}/{total} pages | '
-          f'{stats.get_pages_per_minute():.1f} pages/min | {stats.get_elapsed_time():.1f}s', 
-          end='', flush=True)
+    # Clear the entire line before printing new progress
+    print('\r' + ' ' * 100, end='', flush=True)  # Clear any previous content
+    print(f'\rProgress: [{bar}] {percentage:.1f}%', end='', flush=True)
 
 class WebCrawler:
     def __init__(self, config: CrawlerConfig):
@@ -178,28 +175,59 @@ class WebCrawler:
     def is_valid_url(self, url: str) -> bool:
         try:
             parsed = urlparse(url)
+            
+            # Basic URL validation
+            if not parsed.scheme or not parsed.netloc:
+                return False
+            
+            # Check domain - allow subdomains
+            base_parts = self.base_domain.split('.')
+            url_parts = parsed.netloc.split('.')
+            if len(url_parts) < len(base_parts):
+                return False
+            if base_parts != url_parts[-len(base_parts):]:
+                return False
+            
+            # Skip non-HTML resources
             if any(url.lower().endswith(ext) for ext in SKIP_EXTENSIONS):
                 return False
-            if parsed.netloc != self.base_domain:
-                return False
+            
+            # Check robots.txt
             if self.robots_parser and not self.robots_parser.can_fetch(self.headers['User-Agent'], url):
                 if self.config.verbose:
                     print(f"\nSkipping blocked URL: {url}")
                 return False
+            
             return True
-        except:
+        
+        except Exception as e:
+            if self.config.verbose:
+                print(f"\nError validating URL {url}: {str(e)}")
             return False
 
     def get_links(self, soup: BeautifulSoup, current_url: str, current_depth: int) -> Dict[str, int]:
         links = {}
-        max_links_per_page = 50
+        max_links_per_page = 200
         try:
             for a_tag in soup.find_all('a', href=True):
                 if len(links) >= max_links_per_page:
                     break
-                url = urljoin(current_url, a_tag['href'])
+                
+                href = a_tag['href']
+                # Handle relative URLs better
+                if href.startswith('/'):
+                    url = urljoin(current_url, href)
+                elif href.startswith(('http://', 'https://')):
+                    url = href
+                else:
+                    url = urljoin(current_url, href)
+                
                 if self.is_valid_url(url) and current_depth < self.config.max_depth:
                     links[url] = current_depth + 1
+                
+                if self.config.verbose and len(links) % 50 == 0:
+                    print(f"\nFound {len(links)} valid links on {current_url}")
+                
         except Exception as e:
             if self.config.verbose:
                 print(f"\nError extracting links from {current_url}: {str(e)}")
@@ -208,7 +236,6 @@ class WebCrawler:
     def make_request(self, url: str) -> Optional[requests.Response]:
         """Make HTTP request with configured settings"""
         try:
-            print(f"Requesting: {url}")  # Debug line
             response = requests.get(
                 url=url,
                 headers=self.headers,
@@ -216,10 +243,10 @@ class WebCrawler:
                 verify=True
             )
             response.raise_for_status()
-            print(f"Request successful: {url}")  # Debug line
             return response
         except Exception as e:
-            print(f"Request failed: {url} - {str(e)}")  # Debug line
+            if self.config.verbose:
+                print(f"\nRequest failed: {url} - {str(e)}")
             self.stats.add_error(f"Error fetching {url}: {str(e)}")
             return None
 
@@ -233,25 +260,32 @@ class WebCrawler:
 
     def worker(self, searches: List[Tuple[str, str]], results: Dict[str, List[Tuple[str, Any]]]) -> None:
         """Worker function for concurrent crawling"""
+        empty_queue_count = 0
+        max_empty_attempts = 10  # Increased from 5 to 10
+        
         while not self._stop_requested:
             try:
-                # Check page limit before processing new URLs
                 with self.visited_lock:
                     if self.stats.pages_visited >= self.config.max_pages:
                         print(f"\nReached maximum pages limit ({self.config.max_pages})")
                         self.stop()
                         break
 
-                # Get URL from queue with timeout
                 try:
-                    current_url, current_depth = self.url_queue.get(timeout=1)
+                    current_url, current_depth = self.url_queue.get(timeout=2)  # Increased timeout
+                    empty_queue_count = 0
                 except:
+                    empty_queue_count += 1
+                    if empty_queue_count >= max_empty_attempts:
+                        if self.config.verbose:
+                            print(f"\nWorker stopping - no URLs available after {max_empty_attempts} attempts")
+                            print(f"Queue size: {self.url_queue.qsize()}")
+                            print(f"Pages visited: {self.stats.pages_visited}")
+                        break
                     continue
 
                 if current_url in self.visited_urls:
                     continue
-
-                print(f"\nProcessing: {current_url}")
 
                 response = self.make_request(current_url)
                 if not response:
@@ -288,7 +322,8 @@ class WebCrawler:
                 time.sleep(self.config.sleep_time)
 
             except Exception as e:
-                print(f"\nError in worker: {str(e)}")
+                if self.config.verbose:
+                    print(f"\nError in worker: {str(e)}")
                 continue
 
     def search_page(self, soup: BeautifulSoup, searches: List[Tuple[str, str]]) -> Dict[str, List[Any]]:
@@ -312,7 +347,7 @@ class WebCrawler:
             if not response:
                 print("Failed to connect to the base URL. Please check the URL and try again.")
                 return results
-            print("Successfully connected to base URL")
+            print("Successfully connected to base URL\n")
         except Exception as e:
             print(f"Error connecting to base URL: {str(e)}")
             return results
@@ -321,29 +356,36 @@ class WebCrawler:
         self.url_queue.put((self.config.base_url, 0))
         
         try:
-            # Create and start worker threads
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.config.max_workers) as executor:
                 futures = []
                 for _ in range(self.config.max_workers):
                     futures.append(executor.submit(self.worker, searches, results))
+                
+                stall_count = 0
+                last_visited_count = 0
+                max_stall_time = 10  # Maximum number of consecutive checks without progress
                 
                 # Monitor progress
                 while not self._stop_requested:
                     try:
                         print_progress(self.stats, self.config.max_pages, self.config.sleep_time)
                         
-                        # Check queue and worker status
-                        active_workers = sum(1 for f in futures if not f.done())
-                        current_queue_size = self.url_queue.qsize()
+                        # Check for stalled crawl
+                        if self.stats.pages_visited == last_visited_count:
+                            stall_count += 1
+                        else:
+                            stall_count = 0
+                            last_visited_count = self.stats.pages_visited
                         
-                        print(f"\rActive workers: {active_workers}, Queue size: {current_queue_size}", end='')
+                        # If crawl is stalled for too long, check if we should stop
+                        if stall_count >= max_stall_time:
+                            active_workers = sum(1 for f in futures if not f.done())
+                            if active_workers == 0 or self.url_queue.empty():
+                                print("\n\nCrawl appears to be complete (no new pages found)")
+                                self.stop()
+                                break
                         
-                        if active_workers == 0 and self.url_queue.empty():
-                            print("\nNo active workers and queue is empty. Stopping crawl...")
-                            self.stop()
-                            break
-                        
-                        time.sleep(1)  # Reduced sleep time for more responsive monitoring
+                        time.sleep(0.1)
                         
                     except KeyboardInterrupt:
                         print("\n\nCtrl+C detected. Stopping crawl...")
@@ -601,7 +643,7 @@ def get_user_input() -> CrawlerConfig:
         validate_search_values
     ).split(',')
     
-    MAX_PAGES = 1000
+    MAX_PAGES = 5000
     max_pages = int(get_valid_input(
         f"Enter maximum number of pages to search (1-{MAX_PAGES}, default: 100): ",
         lambda x: x.isdigit() and 1 <= int(x) <= MAX_PAGES,
