@@ -1,0 +1,5 @@
+[server]
+headless = true
+
+[general]
+script = "wheres_my_value_(webcrawler)/wheres_my_value.py"
