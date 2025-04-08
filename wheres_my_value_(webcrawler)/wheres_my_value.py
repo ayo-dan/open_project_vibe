@@ -10,7 +10,6 @@ from urllib.parse import urljoin, urlparse
 import time
 import json
 import os
-import winsound
 import sys
 from datetime import datetime
 from urllib.robotparser import RobotFileParser
@@ -271,7 +270,6 @@ class WebCrawler:
                             if search_type == 'text':
                                 self.found_values.add(value)
                                 print(f"\n🎉 Found value: '{value}'!")
-                                print('\a')  # Print ASCII bell character for cross-platform alert
                                 self.save_history()
 
                 # Only add new links if we haven't reached the page limit
