@@ -142,6 +142,8 @@ class WebCrawler:
         self._last_save_count = 0
         self._stop_requested = False
         self.headers = DEFAULT_HEADERS.copy()
+        self._active_tasks = 0
+        self._active_lock = threading.Lock()
         
         # Initialize robots.txt parser
         self.robots_parser = RobotFileParser() if config.respect_robots else None
@@ -250,6 +252,10 @@ class WebCrawler:
             except:
                 pass
 
+    def active_task_count(self) -> int:
+        with self._active_lock:
+            return self._active_tasks
+
     def worker(self, searches: List[Tuple[str, str]], results: Dict[str, List[Tuple[str, Any]]]) -> None:
         """Worker function for concurrent crawling"""
         while not self._stop_requested:
@@ -269,13 +275,20 @@ class WebCrawler:
                 except:
                     continue
 
+                with self._active_lock:
+                    self._active_tasks += 1
+
                 if current_url in self.visited_urls:
+                    with self._active_lock:
+                        self._active_tasks -= 1
                     continue
 
                 print(f"\nProcessing: {current_url}")
 
                 response = self.make_request(current_url)
                 if not response:
+                    with self._active_lock:
+                        self._active_tasks -= 1
                     continue
 
                 soup = BeautifulSoup(response.text, 'html.parser')
@@ -309,10 +322,16 @@ class WebCrawler:
                     self.visited_urls.add(current_url)
                     self.stats.increment_pages()
 
+                with self._active_lock:
+                    self._active_tasks -= 1
+
                 time.sleep(self.config.sleep_time)
 
             except Exception as e:
                 print(f"\nError in worker: {str(e)}")
+                with self._active_lock:
+                    if self._active_tasks > 0:
+                        self._active_tasks -= 1
                 continue
 
     def search_page(self, soup: BeautifulSoup, searches: List[Tuple[str, str]]) -> Dict[str, List[Any]]:
@@ -371,11 +390,15 @@ class WebCrawler:
                         # Check queue and worker status
                         active_workers = sum(1 for f in futures if not f.done())
                         current_queue_size = self.url_queue.qsize()
-                        
-                        print(f"\rActive workers: {active_workers}, Queue size: {current_queue_size}", end='')
-                        
-                        if active_workers == 0 and self.url_queue.empty():
-                            print("\nNo active workers and queue is empty. Stopping crawl...")
+                        active_tasks = self.active_task_count()
+
+                        print(
+                            f"\rActive workers: {active_workers}, Queue size: {current_queue_size}, Processing: {active_tasks}",
+                            end='',
+                        )
+
+                        if current_queue_size == 0 and active_tasks == 0:
+                            print("\nQueue empty and no pages in progress. Stopping crawl...")
                             self.stop()
                             break
                         
