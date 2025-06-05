@@ -116,8 +116,10 @@ class WebCrawler:
         self.base_domain = urlparse(config.base_url).netloc
         self.visited_urls: Set[str] = set()
         self.url_queue = Queue()
+        self.queued_urls: Set[str] = set()
         self.results_lock = threading.Lock()
         self.visited_lock = threading.Lock()
+        self.queue_lock = threading.Lock()
         self.stats = CrawlerStats()
         self.found_values: Set[str] = set()
         self._last_save_count = 0
@@ -226,7 +228,9 @@ class WebCrawler:
         self._stop_requested = True
         while not self.url_queue.empty():
             try:
-                self.url_queue.get_nowait()
+                url, _ = self.url_queue.get_nowait()
+                with self.queue_lock:
+                    self.queued_urls.discard(url)
             except:
                 pass
 
@@ -244,6 +248,8 @@ class WebCrawler:
                 # Get URL from queue with timeout
                 try:
                     current_url, current_depth = self.url_queue.get(timeout=1)
+                    with self.queue_lock:
+                        self.queued_urls.discard(current_url)
                 except:
                     continue
 
@@ -277,8 +283,10 @@ class WebCrawler:
                     if current_depth < self.config.max_depth:
                         new_links = self.get_links(soup, current_url, current_depth)
                         for url, depth in new_links.items():
-                            if url not in self.visited_urls:
-                                self.url_queue.put((url, depth))
+                            with self.queue_lock:
+                                if url not in self.visited_urls and url not in self.queued_urls:
+                                    self.url_queue.put((url, depth))
+                                    self.queued_urls.add(url)
 
                 # Mark URL as visited
                 with self.visited_lock:
@@ -318,7 +326,10 @@ class WebCrawler:
             return results
 
         # Initialize URL queue with base URL
-        self.url_queue.put((self.config.base_url, 0))
+        with self.queue_lock:
+            if self.config.base_url not in self.visited_urls and self.config.base_url not in self.queued_urls:
+                self.url_queue.put((self.config.base_url, 0))
+                self.queued_urls.add(self.config.base_url)
         
         try:
             # Create and start worker threads
