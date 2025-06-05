@@ -121,8 +121,6 @@ class WebCrawler:
         self.stats = CrawlerStats()
         self.found_values: Set[str] = set()
         self._last_save_count = 0
-        self._consecutive_errors = 0
-        self._max_consecutive_errors = 5
         self._stop_requested = False
         self.headers = DEFAULT_HEADERS.copy()
         
