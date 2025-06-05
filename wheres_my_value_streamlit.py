@@ -4,6 +4,9 @@ from wheres_my_value import CrawlerConfig, WebCrawler, NavigableString
 import os
 from typing import Tuple, List
 
+if "stop_crawl" not in st.session_state:
+    st.session_state["stop_crawl"] = False
+
 st.set_page_config(page_title="Where's My Value?", layout="wide")
 st.title("🔍 Where’s My Value? — Full Crawler Edition")
 
@@ -53,8 +56,20 @@ if submitted:
     st.json(config.__dict__)
 
     crawler = WebCrawler(config)
+    progress_bar = st.progress(0.0)
+    stop_button = st.button("Stop")
+
+    def progress_callback(page_count: int, total: int) -> None:
+        progress = min(page_count / total, 1.0)
+        progress_bar.progress(progress)
+        if st.session_state.get("stop_crawl"):
+            crawler.stop()
+
     with st.spinner("Crawling in progress..."):
-        results = crawler.crawl_and_search(searches)
+        if stop_button:
+            st.session_state["stop_crawl"] = True
+        results = crawler.crawl_and_search(searches, on_progress=progress_callback)
+    st.session_state["stop_crawl"] = False
 
     st.markdown("### ✅ Results")
     if not results:

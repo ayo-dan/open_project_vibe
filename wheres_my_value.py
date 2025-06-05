@@ -5,7 +5,7 @@
 import requests
 from bs4 import BeautifulSoup, NavigableString, Tag
 from requests.exceptions import RequestException
-from typing import List, Optional, Set, Dict, Union, Tuple, Any
+from typing import List, Optional, Set, Dict, Union, Tuple, Any, Callable
 from urllib.parse import urljoin, urlparse
 import time
 import json
@@ -98,17 +98,32 @@ class CrawlerStats:
             return True
         return False
 
-def print_progress(stats: CrawlerStats, total: int, sleep_time: float, bar_length: int = 50) -> None:
+def print_progress(
+    stats: CrawlerStats,
+    total: int,
+    sleep_time: float,
+    bar_length: int = 50,
+    callback: Optional[Callable[[int, int], None]] = None,
+) -> None:
     if not stats.should_print_progress(total, sleep_time):
         return
-        
+
     percentage = (stats.pages_visited / total) * 100
     filled_length = int(bar_length * stats.pages_visited // total)
     bar = '=' * filled_length + '-' * (bar_length - filled_length)
-    
-    print(f'\rProgress: [{bar}] {percentage:.1f}% | {stats.pages_visited}/{total} pages | '
-          f'{stats.get_pages_per_minute():.1f} pages/min | {stats.get_elapsed_time():.1f}s', 
-          end='', flush=True)
+
+    print(
+        f'\rProgress: [{bar}] {percentage:.1f}% | {stats.pages_visited}/{total} pages | '
+        f'{stats.get_pages_per_minute():.1f} pages/min | {stats.get_elapsed_time():.1f}s',
+        end='',
+        flush=True,
+    )
+
+    if callback:
+        try:
+            callback(stats.pages_visited, total)
+        except Exception:
+            pass
 
 class WebCrawler:
     def __init__(self, config: CrawlerConfig):
@@ -296,7 +311,11 @@ class WebCrawler:
             results[key] = search_html(soup, search_type, value)
         return dict(results)
 
-    def crawl_and_search(self, searches: List[Tuple[str, str]]) -> Dict[str, List[Tuple[str, Any]]]:
+    def crawl_and_search(
+        self,
+        searches: List[Tuple[str, str]],
+        on_progress: Optional[Callable[[int, int], None]] = None,
+    ) -> Dict[str, List[Tuple[str, Any]]]:
         """Crawl pages and perform searches"""
         results = defaultdict(list)
         
@@ -328,7 +347,12 @@ class WebCrawler:
                 # Monitor progress
                 while not self._stop_requested:
                     try:
-                        print_progress(self.stats, self.config.max_pages, self.config.sleep_time)
+                        print_progress(
+                            self.stats,
+                            self.config.max_pages,
+                            self.config.sleep_time,
+                            callback=on_progress,
+                        )
                         
                         # Check queue and worker status
                         active_workers = sum(1 for f in futures if not f.done())
@@ -565,7 +589,7 @@ def export_results_to_file(results: Dict[str, List[Tuple[str, Any]]], search_val
 def get_user_input() -> CrawlerConfig:
     print("\n=== Where's My Value Configuration ===")
     
-    def get_valid_input(prompt: str, validator: callable, default: Any = None) -> Any:
+    def get_valid_input(prompt: str, validator: Callable[[str], bool], default: Any = None) -> Any:
         while True:
             value = input(f"\n{prompt}").strip()
             if not value and default is not None:
