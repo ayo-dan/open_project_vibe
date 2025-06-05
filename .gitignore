@@ -1,0 +1,39 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Crawler history file
+crawler_history.json
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs and local data
+*.log
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+.tox/
+.nox/
+.mypy_cache/
+
+# IDE and editor settings
+.vscode/
+.idea/
+
+# Streamlit cache
+.streamlit/cache/
+
+# OS-generated files
+.DS_Store
