@@ -121,6 +121,7 @@ class WebCrawler:
         self.stats = CrawlerStats()
         self.found_values: Set[str] = set()
         self._last_save_count = 0
+        self._last_saved_urls: Set[str] = set()
         self._consecutive_errors = 0
         self._max_consecutive_errors = 5
         self._stop_requested = False
@@ -154,9 +155,11 @@ class WebCrawler:
                     history = json.load(f)
                     self.visited_urls = set(history.get('visited_urls', []))
                     self._last_save_count = len(self.visited_urls)
+                    self._last_saved_urls = set(self.visited_urls)
                     print(f"Loaded {len(self.visited_urls)} previously visited URLs")
             else:
                 print("No history file found. Starting fresh.")
+                self._last_saved_urls = set()
         except Exception as e:
             print(f"Error loading history: {e}")
 
@@ -165,11 +168,15 @@ class WebCrawler:
             return
             
         try:
-            if self._last_save_count == len(self.visited_urls):
+            if (
+                self._last_save_count == len(self.visited_urls)
+                and self.visited_urls == self._last_saved_urls
+            ):
                 return
             with open(self.config.history_file, 'w') as f:
                 json.dump({'visited_urls': list(self.visited_urls)}, f)
             self._last_save_count = len(self.visited_urls)
+            self._last_saved_urls = set(self.visited_urls)
             print(f"Saved {len(self.visited_urls)} visited URLs to history")
         except Exception as e:
             print(f"Error saving history: {e}")
@@ -358,6 +365,7 @@ class WebCrawler:
                     except:
                         pass
             
+            self.save_history()
             return dict(results)
             
         except Exception as e:
