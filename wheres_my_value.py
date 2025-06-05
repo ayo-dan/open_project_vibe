@@ -122,6 +122,7 @@ class WebCrawler:
         self.found_values: Set[str] = set()
         self._last_save_count = 0
         self._last_saved_urls: Set[str] = set()
+        self._history_lock = threading.Lock()
         self._consecutive_errors = 0
         self._max_consecutive_errors = 5
         self._stop_requested = False
@@ -166,20 +167,21 @@ class WebCrawler:
     def save_history(self) -> None:
         if not self.config.use_history or not self.config.history_file:
             return
-            
-        try:
-            if (
-                self._last_save_count == len(self.visited_urls)
-                and self.visited_urls == self._last_saved_urls
-            ):
-                return
-            with open(self.config.history_file, 'w') as f:
-                json.dump({'visited_urls': list(self.visited_urls)}, f)
-            self._last_save_count = len(self.visited_urls)
-            self._last_saved_urls = set(self.visited_urls)
-            print(f"Saved {len(self.visited_urls)} visited URLs to history")
-        except Exception as e:
-            print(f"Error saving history: {e}")
+
+        with self._history_lock:
+            try:
+                if (
+                    self._last_save_count == len(self.visited_urls)
+                    and self.visited_urls == self._last_saved_urls
+                ):
+                    return
+                with open(self.config.history_file, 'w') as f:
+                    json.dump({'visited_urls': list(self.visited_urls)}, f)
+                self._last_save_count = len(self.visited_urls)
+                self._last_saved_urls = set(self.visited_urls)
+                print(f"Saved {len(self.visited_urls)} visited URLs to history")
+            except Exception as e:
+                print(f"Error saving history: {e}")
 
     def is_valid_url(self, url: str) -> bool:
         try:
