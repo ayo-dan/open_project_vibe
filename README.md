@@ -1,6 +1,6 @@
 # Where's My Value?
 
-This project contains a basic web crawler that can be operated from the command line or via a Streamlit interface.
+This project contains a basic web crawler that runs from the command line. A separate UI will be built using shadcn components.
 
 ## Installation
 
@@ -34,12 +34,4 @@ Track visited URL history? [y/N]: y
 Export results to a file? [y/N]: y
 ```
 
-## Launching the Streamlit App
 
-Run the web interface with:
-
-```bash
-streamlit run wheres_my_value_streamlit.py
-```
-
-The interface provides checkboxes for the same options as the CLI. Enable **Use visited history** to store progress in `crawler_history.json` and **Export results to file** to save a report when the crawl finishes.

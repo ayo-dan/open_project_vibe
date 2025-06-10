@@ -31,9 +31,5 @@ dist/
 # IDE and editor settings
 .vscode/
 .idea/
-
-# Streamlit cache
-.streamlit/cache/
-
 # OS-generated files
 .DS_Store
