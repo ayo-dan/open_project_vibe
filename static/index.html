@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Where's My Value?</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        #loading { display: none; }
+        #result { margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <h1>Where's My Value?</h1>
+    <form id="crawl-form">
+        <label>
+            Base URL:
+            <input type="url" id="base-url" required placeholder="https://example.com" />
+        </label>
+        <br/>
+        <label>
+            Search values (comma separated):
+            <input type="text" id="search-values" required />
+        </label>
+        <br/>
+        <button type="submit">Start Crawl</button>
+    </form>
+    <div id="loading">Loading...</div>
+    <pre id="result"></pre>
+
+    <script>
+        const form = document.getElementById('crawl-form');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            result.textContent = '';
+            loading.style.display = 'block';
+
+            const baseUrl = document.getElementById('base-url').value;
+            const values = document.getElementById('search-values').value
+                .split(',')
+                .map(v => v.trim())
+                .filter(Boolean);
+
+            try {
+                const response = await fetch('/crawl', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ base_url: baseUrl, search_values: values })
+                });
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+
+                const data = await response.json();
+                result.textContent = JSON.stringify(data, null, 2);
+            } catch (err) {
+                result.textContent = err.message;
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
