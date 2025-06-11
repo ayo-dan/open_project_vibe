@@ -57,7 +57,12 @@
                 }
 
                 const data = await response.json();
-                result.textContent = JSON.stringify(data, null, 2);
+                const summary = [
+                    `Pages visited: ${data.pages_visited}`,
+                    `Errors: ${data.errors}`,
+                    `Found values: ${data.found_values.join(', ')}`
+                ].join('\n');
+                result.textContent = summary;
             } catch (err) {
                 result.textContent = err.message;
             } finally {

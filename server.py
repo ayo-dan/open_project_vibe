@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
 from typing import List, Optional
@@ -6,7 +7,13 @@ from typing import List, Optional
 from wheres_my_value import WebCrawler, CrawlerConfig
 
 app = FastAPI()
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get("/")
+def read_index() -> FileResponse:
+    """Serve the main HTML page."""
+    return FileResponse("static/index.html")
 
 class CrawlRequest(BaseModel):
     base_url: HttpUrl

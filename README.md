@@ -43,5 +43,5 @@ Run the API server and open the UI:
 uvicorn server:app --reload
 ```
 
-Visit `http://localhost:8000` in your browser to use the simple form interface.
+Visit `http://localhost:8000` in your browser to use the form interface.
 
