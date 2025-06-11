@@ -731,6 +731,33 @@ def get_user_input() -> CrawlerConfig:
         history_file=history_file
     )
 
+
+def run_crawl(config: CrawlerConfig) -> Dict[str, List[Dict[str, str]]]:
+    """Run the crawler and return JSON serializable results."""
+    crawler = WebCrawler(config)
+
+    searches: List[Tuple[str, str]] = []
+    for value in config.search_values:
+        searches.extend([
+            ("text", value),
+            ("id", value),
+            ("class", value),
+            ("attr", value),
+        ])
+
+    raw_results = crawler.crawl_and_search(searches)
+
+    serialized: Dict[str, List[Dict[str, str]]] = {}
+    for key, items in raw_results.items():
+        serialized[key] = []
+        for url, element in items:
+            if isinstance(element, NavigableString):
+                text = str(element).strip()
+            else:
+                text = element.get_text(strip=True)
+            serialized[key].append({"url": url, "text": text})
+    return serialized
+
 def main() -> None:
     config = get_user_input()
     crawler = WebCrawler(config)
