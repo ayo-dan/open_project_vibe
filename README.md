@@ -35,3 +35,13 @@ Export results to a file? [y/N]: y
 ```
 
 
+## Starting the Web Server
+
+Run the API server and open the UI:
+
+```bash
+uvicorn server:app --reload
+```
+
+Visit `http://localhost:8000` in your browser to use the form interface.
+
