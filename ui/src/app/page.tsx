@@ -1,103 +1,156 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState } from 'react'
+
+export default function HomePage() {
+  const [baseUrl, setBaseUrl] = useState('')
+  const [searchValues, setSearchValues] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [maxPages, setMaxPages] = useState<number>(100)
+  const [workers, setWorkers] = useState<number>(1)
+  const [delay, setDelay] = useState<number>(2)
+  const [respectRobots, setRespectRobots] = useState<boolean>(true)
+  const [trackHistory, setTrackHistory] = useState<boolean>(false)
+  const [debugMode, setDebugMode] = useState<boolean>(false)
+  const [exportResults, setExportResults] = useState<boolean>(false)
+  const [errors, setErrors] = useState<{ baseUrl?: string; searchValues?: string }>({})
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const newErrors: { baseUrl?: string; searchValues?: string } = {}
+    if (!baseUrl.trim()) newErrors.baseUrl = 'Base URL is required.'
+    if (!searchValues.trim()) newErrors.searchValues = 'Search values are required.'
+    setErrors(newErrors)
+    if (Object.keys(newErrors).length === 0) {
+      console.log({
+        baseUrl,
+        searchValues: searchValues
+          .split(',')
+          .map(v => v.trim())
+          .filter(Boolean),
+        maxPages,
+        workers,
+        delay,
+        respectRobots,
+        trackHistory,
+        debugMode,
+        exportResults,
+      })
+    }
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
+        <div>
+          <label className="mb-1 block text-sm font-medium">Base URL</label>
+          <input
+            className="w-full rounded border px-2 py-1"
+            value={baseUrl}
+            onChange={e => setBaseUrl(e.target.value)}
+            placeholder="https://example.com"
+          />
+          {errors.baseUrl && <p className="mt-1 text-sm text-red-600">{errors.baseUrl}</p>}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+        <div>
+          <label className="mb-1 block text-sm font-medium">Search values</label>
+          <textarea
+            className="w-full rounded border px-2 py-1"
+            value={searchValues}
+            onChange={e => setSearchValues(e.target.value)}
+            placeholder="contact, form"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          {errors.searchValues && (
+            <p className="mt-1 text-sm text-red-600">{errors.searchValues}</p>
+          )}
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Advanced settings</span>
+          <input
+            type="checkbox"
+            checked={showAdvanced}
+            onChange={e => setShowAdvanced(e.target.checked)}
+            className="h-4 w-4"
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+        </div>
+        {showAdvanced && (
+          <div className="space-y-4 border-l pl-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium">Max pages</label>
+              <input
+                className="w-full rounded border px-2 py-1"
+                type="number"
+                min={1}
+                value={maxPages}
+                onChange={e => setMaxPages(parseInt(e.target.value) || 1)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Workers</label>
+              <input
+                className="w-full rounded border px-2 py-1"
+                type="number"
+                min={1}
+                value={workers}
+                onChange={e => setWorkers(parseInt(e.target.value) || 1)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Delay (seconds)</label>
+              <input
+                className="w-full rounded border px-2 py-1"
+                type="number"
+                min={0}
+                step={0.1}
+                value={delay}
+                onChange={e => setDelay(parseFloat(e.target.value) || 0)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Respect robots.txt</span>
+              <input
+                type="checkbox"
+                checked={respectRobots}
+                onChange={e => setRespectRobots(e.target.checked)}
+                className="h-4 w-4"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Track URL history</span>
+              <input
+                type="checkbox"
+                checked={trackHistory}
+                onChange={e => setTrackHistory(e.target.checked)}
+                className="h-4 w-4"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Debug mode</span>
+              <input
+                type="checkbox"
+                checked={debugMode}
+                onChange={e => setDebugMode(e.target.checked)}
+                className="h-4 w-4"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Export results</span>
+              <input
+                type="checkbox"
+                checked={exportResults}
+                onChange={e => setExportResults(e.target.checked)}
+                className="h-4 w-4"
+              />
+            </div>
+          </div>
+        )}
+        <button
+          type="submit"
+          className="w-full rounded bg-black px-4 py-2 text-white hover:bg-gray-800"
         >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          Start Crawl
+        </button>
+      </form>
     </div>
-  );
+  )
 }
