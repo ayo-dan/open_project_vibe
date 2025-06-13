@@ -71,7 +71,7 @@ npm run dev
 Run the API server and open the UI:
 
 ```bash
-uvicorn server:app --reload
+uvicorn api.server:app --reload
 ```
 
 Visit `http://localhost:8000` in your browser to use the form interface.
