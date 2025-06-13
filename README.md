@@ -44,4 +44,34 @@ uvicorn api.server:app --reload
 
 Send a `POST` request with the crawler configuration to `/crawl` to perform a crawl. The results are returned as JSON.
 
+## Running Tests
 
+Execute the unit test suite with pytest:
+
+```bash
+pytest
+```
+
+## Running the Development Servers
+
+Start the FastAPI server:
+
+```bash
+uvicorn api.server:app
+```
+
+Start the Next.js dev server:
+
+```bash
+npm run dev
+```
+
+## Starting the Web Server
+
+Run the API server and open the UI:
+
+```bash
+uvicorn server:app --reload
+```
+
+Visit `http://localhost:8000` in your browser to use the form interface.
