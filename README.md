@@ -34,4 +34,14 @@ Track visited URL history? [y/N]: y
 Export results to a file? [y/N]: y
 ```
 
+## Running the API Server
+
+Launch the FastAPI server to crawl via HTTP:
+
+```bash
+uvicorn api.server:app --reload
+```
+
+Send a `POST` request to `/crawl` with the same fields as `CrawlerConfig`.
+
 

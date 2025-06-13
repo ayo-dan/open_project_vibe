@@ -731,18 +731,27 @@ def get_user_input() -> CrawlerConfig:
         history_file=history_file
     )
 
-def main() -> None:
-    config = get_user_input()
+def crawl_with_config(
+    config: CrawlerConfig,
+) -> Tuple[Dict[str, List[Tuple[str, Any]]], WebCrawler]:
+    """Run the crawler and return the results alongside the crawler instance."""
     crawler = WebCrawler(config)
-    
-    searches = []
+
+    searches: List[Tuple[str, str]] = []
     for search_value in config.search_values:
         searches.extend([
-            ('text', search_value),
-            ('id', search_value),
-            ('class', search_value),
-            ('attr', search_value)
+            ("text", search_value),
+            ("id", search_value),
+            ("class", search_value),
+            ("attr", search_value),
         ])
+
+    results = crawler.crawl_and_search(searches)
+    return results, crawler
+
+
+def main() -> None:
+    config = get_user_input()
     
     print("\n=== Crawler Configuration ===")
     print(f"URL: {config.base_url}")
@@ -765,7 +774,7 @@ def main() -> None:
     print("\nPress Ctrl+C to stop at any time")
     
     try:
-        results = crawler.crawl_and_search(searches)
+        results, crawler = crawl_with_config(config)
         
         print("\n=== Search Results ===")
         for search_value in config.search_values:
