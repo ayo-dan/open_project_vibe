@@ -27,6 +27,18 @@ class CrawlResult(BaseModel):
 
 @app.post('/crawl', response_model=CrawlResult)
 def crawl(request: CrawlRequest):
+    """Run a crawl job and return the summarized results.
+
+    Parameters
+    ----------
+    request: CrawlRequest
+        Crawler settings provided by the API client.
+
+    Returns
+    -------
+    CrawlResult
+        Summary of found values, pages visited and error count.
+    """
     config = CrawlerConfig(
         base_url=str(request.base_url),
         search_values=request.search_values,
