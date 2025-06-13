@@ -4,13 +4,11 @@
 
 import requests
 from bs4 import BeautifulSoup, NavigableString, Tag
-from requests.exceptions import RequestException
 from typing import List, Optional, Set, Dict, Union, Tuple, Any, Callable
 from urllib.parse import urljoin, urlparse
 import time
 import json
 import os
-import sys
 from datetime import datetime
 from urllib.robotparser import RobotFileParser
 import concurrent.futures
