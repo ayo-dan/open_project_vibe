@@ -11,6 +11,7 @@ crawler_history.json
 venv/
 ENV/
 env/
+node_modules/
 
 # Distribution / packaging
 build/
