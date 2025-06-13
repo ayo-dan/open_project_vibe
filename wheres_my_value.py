@@ -563,6 +563,13 @@ def print_element_info(element: Union[Tag, NavigableString], url: Optional[str] 
     else:
         print("Status: Visible element")
 
+
+def element_to_string(element: Union[Tag, NavigableString]) -> str:
+    """Serialize a BeautifulSoup element for JSON output."""
+    if isinstance(element, NavigableString):
+        return str(element).strip()
+    return str(element)
+
 def export_results_to_file(results: Dict[str, List[Tuple[str, Any]]], search_values: List[str]) -> None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"search_results_{timestamp}.txt"
@@ -622,6 +629,22 @@ def export_results_to_file(results: Dict[str, List[Tuple[str, Any]]], search_val
         print(f"\nResults exported to: {filename}")
     except Exception as e:
         print(f"Error exporting results: {e}")
+
+
+def run_crawler(config: CrawlerConfig) -> Dict[str, List[Tuple[str, Any]]]:
+    """Run the crawler with the provided configuration and return results."""
+    crawler = WebCrawler(config)
+
+    searches: List[Tuple[str, str]] = []
+    for search_value in config.search_values:
+        searches.extend([
+            ("text", search_value),
+            ("id", search_value),
+            ("class", search_value),
+            ("attr", search_value),
+        ])
+
+    return crawler.crawl_and_search(searches)
 
 def get_user_input() -> CrawlerConfig:
     print("\n=== Where's My Value Configuration ===")
@@ -733,20 +756,12 @@ def get_user_input() -> CrawlerConfig:
 
 def main() -> None:
     config = get_user_input()
-    crawler = WebCrawler(config)
-    
-    searches = []
-    for search_value in config.search_values:
-        searches.extend([
-            ('text', search_value),
-            ('id', search_value),
-            ('class', search_value),
-            ('attr', search_value)
-        ])
+
+    searches_display = ', '.join(config.search_values)
     
     print("\n=== Crawler Configuration ===")
     print(f"URL: {config.base_url}")
-    print(f"Searching for: {', '.join(config.search_values)}")
+    print(f"Searching for: {searches_display}")
     print(f"Maximum pages: {config.max_pages}")
     print(f"Concurrent workers: {config.max_workers}")
     print(f"Delay between requests: {config.sleep_time} seconds")
@@ -763,9 +778,9 @@ def main() -> None:
         print("Results will be exported to file")
     
     print("\nPress Ctrl+C to stop at any time")
-    
+
     try:
-        results = crawler.crawl_and_search(searches)
+        results = run_crawler(config)
         
         print("\n=== Search Results ===")
         for search_value in config.search_values:
@@ -807,13 +822,8 @@ def main() -> None:
             
     except KeyboardInterrupt:
         print("\n\nCrawl interrupted by user. Stopping...")
-        crawler.stop()
-        print("Saving progress...")
-        crawler.save_history()
-        print("Crawl stopped successfully.")
     except Exception as e:
         print(f"\n\nError during crawl: {str(e)}")
-        crawler.save_history()
 
 if __name__ == "__main__":
     main()
