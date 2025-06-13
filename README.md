@@ -50,9 +50,11 @@ Start the FastAPI server:
 uvicorn api.server:app
 ```
 
-Start the Next.js dev server:
+The frontend code lives in the `ui` directory. If you have initialized a Next.js
+project there, run its dev server from inside that folder:
 
 ```bash
+cd ui
 npm run dev
 ```
 
