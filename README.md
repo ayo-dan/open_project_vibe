@@ -34,6 +34,14 @@ Track visited URL history? [y/N]: y
 Export results to a file? [y/N]: y
 ```
 
+## Running Tests
+
+Execute the unit test suite with pytest:
+
+```bash
+pytest
+```
+
 ## Running the Development Servers
 
 Start the FastAPI server:
