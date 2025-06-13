@@ -1,3 +1,9 @@
+"""FastAPI application exposing an endpoint for running the crawler.
+
+The `/crawl` route accepts crawl parameters and returns the results produced by
+``run_crawl``.
+"""
+
 from typing import List, Optional, Dict, Any
 
 from fastapi import FastAPI
