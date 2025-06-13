@@ -34,4 +34,18 @@ Track visited URL history? [y/N]: y
 Export results to a file? [y/N]: y
 ```
 
+## Running the Development Servers
+
+Start the FastAPI server:
+
+```bash
+uvicorn api.server:app
+```
+
+Start the Next.js dev server:
+
+```bash
+npm run dev
+```
+
 
