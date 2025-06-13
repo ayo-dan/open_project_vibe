@@ -36,4 +36,3 @@ def crawl(config: CrawlerRequest) -> Dict[str, Any]:
         ]
 
     return {"results": serialized}
-
