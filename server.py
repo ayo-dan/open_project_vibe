@@ -65,7 +65,7 @@ def crawl(request: CrawlRequest):
         ])
 
     try:
-        results = crawler.crawl_and_search(searches)
+        _ = crawler.crawl_and_search(searches)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
