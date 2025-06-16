@@ -9,7 +9,7 @@ Python 3.10 or newer is required. Create and activate a virtual environment, the
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt  # downloads packages from PyPI
 ```
 
 ## Running the CLI Crawler
@@ -64,8 +64,11 @@ npm run dev
 Run the API server and open the UI:
 
 ```bash
-uvicorn server:app --reload
+uvicorn api.server:app --reload
 ```
 
 Visit `http://localhost:8000` in your browser to use the form interface.
+
+An example configuration using the previous layout is available in
+`examples/server.py`.
 
