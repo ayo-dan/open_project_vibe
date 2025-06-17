@@ -1,0 +1,11 @@
+[build]
+  base   = "ui"
+  command = "npm run build"
+  publish = "ui/.next"
+
+[functions]
+  directory = "netlify/functions"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
