@@ -12,6 +12,20 @@ source .venv/bin/activate
 pip install -r requirements.txt  # downloads packages from PyPI
 ```
 
+## Setup
+Copy `.env.example` to `.env` and adjust the values if needed:
+
+```bash
+cp .env.example .env
+```
+The `.env` file is listed in `.gitignore` so your local settings remain private.
+
+By default the API endpoint is configured as:
+
+```bash
+API_BASE_URL=http://localhost:8000
+```
+
 ## Running the CLI Crawler
 
 Start the crawler interactively:
@@ -79,5 +93,3 @@ The repo includes _headers and _redirects for Netlify as well as a .env.example 
 A `netlify.toml` file is provided to build the Next.js frontend and deploy Netlify functions. The configuration assumes the UI lives in `ui/` and publishes the `.next` output. The Next.js Netlify plugin is listed in `ui/package.json` as a development dependency.
 
 Deploy using the Netlify CLI or connect this repository through the Netlify web UI.
-
-
