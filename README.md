@@ -72,3 +72,11 @@ Visit `http://localhost:8000` in your browser to use the form interface.
 An example configuration using the previous layout is available in
 `examples/server.py`.
 
+
+## Netlify Deployment
+
+A `netlify.toml` file is provided to build the Next.js frontend and deploy Netlify functions. The configuration assumes the UI lives in `ui/` and publishes the `.next` output. The Next.js Netlify plugin is listed in `ui/package.json` as a development dependency.
+
+Deploy using the Netlify CLI or connect this repository through the Netlify web UI.
+
+
