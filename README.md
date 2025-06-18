@@ -50,10 +50,10 @@ Export results to a file? [y/N]: y
 
 ## Running Tests
 
-Execute the unit test suite with pytest:
+Execute the unit test suite with `pytest -q` for a concise summary of results:
 
 ```bash
-pytest
+pytest -q
 ```
 
 ## Running the Development Servers
@@ -88,8 +88,36 @@ An example configuration using the previous layout is available in
 
 
 ## Netlify Deployment
-The repo includes _headers and _redirects for Netlify as well as a .env.example to document build-time variables.
+The repo includes `_headers` and `_redirects` for Netlify as well as a
+`.env.example` to document build-time variables.
 
-A `netlify.toml` file is provided to build the Next.js frontend and deploy Netlify functions. The configuration assumes the UI lives in `ui/` and publishes the `.next` output. The Next.js Netlify plugin is listed in `ui/package.json` as a development dependency.
+The **new** `netlify.toml` file controls the deployment. The configuration below
+builds the Next.js frontend from the `ui/` directory, outputs to `ui/.next`, and
+serves serverless functions from `netlify/functions/` using the official
+Netlify Next.js plugin:
 
-Deploy using the Netlify CLI or connect this repository through the Netlify web UI.
+```toml
+[build]
+  base    = "ui"
+  command = "npm run build"
+  publish = "ui/.next"
+
+[functions]
+  directory = "netlify/functions"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+```
+
+Deploy using the Netlify CLI or connect the repository through the Netlify web
+UI. The FastAPI API is not automatically deployed—convert it to serverless
+functions or host it separately if you need API access in production. A simple
+function in `netlify/functions/api.py` that adapts `api/server.py` might look
+like this:
+
+```python
+from mangum import Mangum
+from api.server import app
+
+handler = Mangum(app)
+```
