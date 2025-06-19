@@ -7,21 +7,12 @@ results produced by :func:`run_crawl` as JSON.
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+
 from pydantic import BaseModel, HttpUrl
 
 from wheres_my_value import CrawlerConfig, run_crawl, WebCrawler
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
-@app.get("/")
-def read_index() -> FileResponse:
-    """Serve the main HTML page."""
-    return FileResponse("static/index.html")
-
 
 class CrawlRequest(BaseModel):
     """Parameters accepted by the ``/crawl`` endpoint."""

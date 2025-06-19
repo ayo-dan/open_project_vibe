@@ -80,7 +80,7 @@ Run the API server and open the UI:
 uvicorn api.server:app --reload
 ```
 
-Visit `http://localhost:8000` in your browser to use the form interface.
+Visit `http://localhost:8000/docs` in your browser to explore the interactive API documentation.
 
 ## Netlify Deployment
 The repo includes `_headers` and `_redirects` for Netlify as well as a
