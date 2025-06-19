@@ -111,9 +111,8 @@ Netlify Next.js plugin:
 
 Deploy using the Netlify CLI or connect the repository through the Netlify web
 UI. The FastAPI API is not automatically deployed—convert it to serverless
-functions or host it separately if you need API access in production. A simple
-function in `netlify/functions/api.py` that adapts `api/server.py` might look
-like this:
+functions or host it separately if you need API access in production. This
+repository ships with a minimal adapter at `netlify/functions/api.py`:
 
 ```python
 from mangum import Mangum
