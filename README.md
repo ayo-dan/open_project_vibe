@@ -58,7 +58,7 @@ pytest -q
 
 ## Running the Development Servers
 
-Start the FastAPI server:
+Start the FastAPI server. The application is defined in `api/server.py`:
 
 ```bash
 uvicorn api.server:app
@@ -72,7 +72,6 @@ cd ui
 npm run dev
 ```
 
-
 ## Starting the Web Server
 
 Run the API server and open the UI:
@@ -82,10 +81,6 @@ uvicorn api.server:app --reload
 ```
 
 Visit `http://localhost:8000` in your browser to use the form interface.
-
-An example configuration using the previous layout is available in
-`examples/server.py`.
-
 
 ## Netlify Deployment
 The repo includes `_headers` and `_redirects` for Netlify as well as a
