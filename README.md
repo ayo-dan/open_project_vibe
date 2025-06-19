@@ -92,7 +92,7 @@ The repo includes `_headers` and `_redirects` for Netlify as well as a
 `.env.example` to document build-time variables.
 
 The **new** `netlify.toml` file controls the deployment. The configuration below
-builds the Next.js frontend from the `ui/` directory, outputs to `ui/.next`, and
+builds the Next.js frontend from the `ui/` directory, outputs to `.next`, and
 serves serverless functions from `netlify/functions/` using the official
 Netlify Next.js plugin:
 
@@ -100,7 +100,7 @@ Netlify Next.js plugin:
 [build]
   base    = "ui"
   command = "npm run build"
-  publish = "ui/.next"
+  publish = ".next"
 
 [functions]
   directory = "netlify/functions"
@@ -111,9 +111,8 @@ Netlify Next.js plugin:
 
 Deploy using the Netlify CLI or connect the repository through the Netlify web
 UI. The FastAPI API is not automatically deployed—convert it to serverless
-functions or host it separately if you need API access in production. A simple
-function in `netlify/functions/api.py` that adapts `api/server.py` might look
-like this:
+functions or host it separately if you need API access in production. This
+repository ships with a minimal adapter at `netlify/functions/api.py`:
 
 ```python
 from mangum import Mangum
