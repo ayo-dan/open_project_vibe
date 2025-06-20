@@ -2,6 +2,7 @@
 #REASON: This script was originally created to locate a form by its ID on a company website that was getting hit with mass spam. The goal was to find the form by its ID via this script as opposed to looking through many different pages. Once found the form could have reCAPTCHA applied to it.
 #DISCLAIMER: This script was created with the help of Cursor (AI)
 
+import logging
 import requests
 from bs4 import BeautifulSoup, NavigableString, Tag
 from typing import List, Optional, Set, Dict, Union, Tuple, Any, Callable
@@ -41,6 +42,12 @@ DEFAULT_HEADERS = {
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1'
 }
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 @dataclass
 class CrawlerConfig:
@@ -126,6 +133,8 @@ def print_progress(
 class WebCrawler:
     def __init__(self, config: CrawlerConfig):
         self.config = config
+        if config.verbose:
+            logger.setLevel(logging.DEBUG)
         self.base_domain = urlparse(config.base_url).netloc
         self.visited_urls: Set[str] = set()
         self.url_queue = Queue()
@@ -150,16 +159,16 @@ class WebCrawler:
                 robots_url = urljoin(config.base_url, '/robots.txt')
                 self.robots_parser.set_url(robots_url)
                 self.robots_parser.read()
-                print("Successfully loaded robots.txt")
+                logger.info("Successfully loaded robots.txt")
             except Exception as e:
-                print(f"Warning: Could not load robots.txt: {e}")
+                logger.warning(f"Could not load robots.txt: {e}")
                 self.robots_parser = None
         
         if config.use_history:
-            print(f"History file location: {config.history_file}")
+            logger.info(f"History file location: {config.history_file}")
             self.load_history()
         else:
-            print("History tracking disabled")
+            logger.info("History tracking disabled")
 
     def load_history(self) -> None:
         if not self.config.use_history or not self.config.history_file:
@@ -171,11 +180,13 @@ class WebCrawler:
                     history = json.load(f)
                     self.visited_urls = set(history.get('visited_urls', []))
                     self._last_save_count = len(self.visited_urls)
-                    print(f"Loaded {len(self.visited_urls)} previously visited URLs")
+                    logger.info(
+                        f"Loaded {len(self.visited_urls)} previously visited URLs"
+                    )
             else:
-                print("No history file found. Starting fresh.")
+                logger.info("No history file found. Starting fresh.")
         except Exception as e:
-            print(f"Error loading history: {e}")
+            logger.error(f"Error loading history: {e}")
 
     def save_history(self) -> None:
         if not self.config.use_history or not self.config.history_file:
@@ -188,9 +199,11 @@ class WebCrawler:
                 with open(self.config.history_file, 'w') as f:
                     json.dump({'visited_urls': list(self.visited_urls)}, f)
                 self._last_save_count = len(self.visited_urls)
-                print(f"Saved {len(self.visited_urls)} visited URLs to history")
+                logger.info(
+                    f"Saved {len(self.visited_urls)} visited URLs to history"
+                )
             except Exception as e:
-                print(f"Error saving history: {e}")
+                logger.error(f"Error saving history: {e}")
 
     def is_valid_url(self, url: str) -> bool:
         try:
@@ -201,7 +214,7 @@ class WebCrawler:
                 return False
             if self.robots_parser and not self.robots_parser.can_fetch(self.headers['User-Agent'], url):
                 if self.config.verbose:
-                    print(f"\nSkipping blocked URL: {url}")
+                    logger.debug(f"Skipping blocked URL: {url}")
                 return False
             return True
         except:
@@ -219,13 +232,15 @@ class WebCrawler:
                     links[url] = current_depth + 1
         except Exception as e:
             if self.config.verbose:
-                print(f"\nError extracting links from {current_url}: {str(e)}")
+                logger.debug(
+                    f"Error extracting links from {current_url}: {str(e)}"
+                )
         return links
 
     def make_request(self, url: str) -> Optional[requests.Response]:
         """Make HTTP request with configured settings"""
         try:
-            print(f"Requesting: {url}")  # Debug line
+            logger.debug(f"Requesting: {url}")
             response = requests.get(
                 url=url,
                 headers=self.headers,
@@ -233,10 +248,10 @@ class WebCrawler:
                 verify=True
             )
             response.raise_for_status()
-            print(f"Request successful: {url}")  # Debug line
+            logger.debug(f"Request successful: {url}")
             return response
         except Exception as e:
-            print(f"Request failed: {url} - {str(e)}")  # Debug line
+            logger.debug(f"Request failed: {url} - {str(e)}")
             self.stats.add_error(f"Error fetching {url}: {str(e)}")
             return None
 
@@ -261,7 +276,9 @@ class WebCrawler:
                 # Check page limit before processing new URLs
                 with self.visited_lock:
                     if self.stats.pages_visited >= self.config.max_pages:
-                        print(f"\nReached maximum pages limit ({self.config.max_pages})")
+                        logger.info(
+                            f"Reached maximum pages limit ({self.config.max_pages})"
+                        )
                         self.stop()
                         break
 
@@ -281,7 +298,7 @@ class WebCrawler:
                         self._active_tasks -= 1
                     continue
 
-                print(f"\nProcessing: {current_url}")
+                logger.info(f"Processing: {current_url}")
 
                 response = self.make_request(current_url)
                 if not response:
@@ -302,7 +319,7 @@ class WebCrawler:
                             results[key].extend((current_url, element) for element in page_results[key])
                             if search_type == 'text':
                                 self.found_values.add(value)
-                                print(f"\n🎉 Found value: '{value}'!")
+                                logger.info(f"Found value: '{value}'")
                                 self.save_history()
 
                 # Only add new links if we haven't reached the page limit
@@ -326,7 +343,7 @@ class WebCrawler:
                 time.sleep(self.config.sleep_time)
 
             except Exception as e:
-                print(f"\nError in worker: {str(e)}")
+                logger.error(f"Error in worker: {str(e)}")
                 with self._active_lock:
                     if self._active_tasks > 0:
                         self._active_tasks -= 1
@@ -347,19 +364,19 @@ class WebCrawler:
         """Crawl pages and perform searches"""
         results = defaultdict(list)
         
-        print("\nStarting crawl...")
-        print("Press Ctrl+C to stop at any time\n")
+        logger.info("Starting crawl...")
+        logger.info("Press Ctrl+C to stop at any time")
         
         # Test initial connection
         try:
-            print(f"Testing connection to {self.config.base_url}...")
+            logger.info(f"Testing connection to {self.config.base_url}...")
             response = self.make_request(self.config.base_url)
             if not response:
-                print("Failed to connect to the base URL. Please check the URL and try again.")
+                logger.error("Failed to connect to the base URL. Please check the URL and try again.")
                 return results
-            print("Successfully connected to base URL")
+            logger.info("Successfully connected to base URL")
         except Exception as e:
-            print(f"Error connecting to base URL: {str(e)}")
+            logger.error(f"Error connecting to base URL: {str(e)}")
             return results
 
         # Initialize URL queue with base URL
@@ -396,14 +413,14 @@ class WebCrawler:
                         )
 
                         if current_queue_size == 0 and active_tasks == 0:
-                            print("\nQueue empty and no pages in progress. Stopping crawl...")
+                            logger.info("Queue empty and no pages in progress. Stopping crawl...")
                             self.stop()
                             break
                         
                         time.sleep(1)  # Reduced sleep time for more responsive monitoring
                         
                     except KeyboardInterrupt:
-                        print("\n\nCtrl+C detected. Stopping crawl...")
+                        logger.info("Ctrl+C detected. Stopping crawl...")
                         self.stop()
                         break
                 
@@ -418,7 +435,7 @@ class WebCrawler:
             return dict(results)
             
         except Exception as e:
-            print(f"\n\nError during crawl: {str(e)}")
+            logger.error(f"Error during crawl: {str(e)}")
             self.save_history()
             return dict(results)
 
@@ -530,36 +547,38 @@ def print_element_info(element: Union[Tag, NavigableString], url: Optional[str] 
         return
     
     if url:
-        print(f"\nFound on page: {url}")
+        logger.info(f"Found on page: {url}")
     
     if isinstance(element, NavigableString):
-        print("Text content:")
-        print(f"  {element.strip()}")
-        print(f"Parent element: {element.parent.name}")
-        print(f"Visibility: {'Hidden' if is_hidden(element.parent) else 'Visible'}")
+        logger.info("Text content:")
+        logger.info(f"  {element.strip()}")
+        logger.info(f"Parent element: {element.parent.name}")
+        logger.info(
+            f"Visibility: {'Hidden' if is_hidden(element.parent) else 'Visible'}"
+        )
         return
     
-    print("Element details:")
-    print(f"Tag: {element.name}")
+    logger.info("Element details:")
+    logger.info(f"Tag: {element.name}")
     
     # Print attributes
     if element.attrs:
-        print("Attributes:")
+        logger.info("Attributes:")
         for key, value in element.attrs.items():
-            print(f"  {key}: {value}")
+            logger.info(f"  {key}: {value}")
     
     # Print content
     if element.string:
-        print(f"Content: {element.string.strip()}")
+        logger.info(f"Content: {element.string.strip()}")
     elif element.text:
-        print(f"Content: {element.text.strip()}")
+        logger.info(f"Content: {element.text.strip()}")
     
     # Check if element is hidden
     if is_hidden(element):
-        print("Status: Hidden element")
-        print("Hidden by:", get_hidden_reason(element))
+        logger.info("Status: Hidden element")
+        logger.info("Hidden by: %s", get_hidden_reason(element))
     else:
-        print("Status: Visible element")
+        logger.info("Status: Visible element")
 
 def export_results_to_file(results: Dict[str, List[Tuple[str, Any]]], search_values: List[str]) -> None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -617,12 +636,12 @@ def export_results_to_file(results: Dict[str, List[Tuple[str, Any]]], search_val
                     f.write("3. Dynamically loaded by JavaScript\n")
                     f.write("4. In a different format or have different attributes\n")
         
-        print(f"\nResults exported to: {filename}")
+        logger.info(f"Results exported to: {filename}")
     except Exception as e:
-        print(f"Error exporting results: {e}")
+        logger.error(f"Error exporting results: {e}")
 
 def get_user_input() -> CrawlerConfig:
-    print("\n=== Where's My Value Configuration ===")
+    logger.info("=== Where's My Value Configuration ===")
     
     def get_valid_input(prompt: str, validator: Callable[[str], bool], default: Any = None) -> Any:
         while True:
@@ -665,7 +684,7 @@ def get_user_input() -> CrawlerConfig:
         "100"
     ))
     
-    print("\n=== Advanced Settings ===")
+    logger.info("=== Advanced Settings ===")
     
     MIN_SLEEP = 0.1
     MAX_SLEEP = 10.0
@@ -697,7 +716,7 @@ def get_user_input() -> CrawlerConfig:
         "no"
     ).lower() == 'yes'
     
-    print("\n=== Optional Features ===")
+    logger.info("=== Optional Features ===")
     debug_mode = get_valid_input(
         "Enable debug mode? (yes/no, default: no): ",
         validate_yes_no,
@@ -712,7 +731,7 @@ def get_user_input() -> CrawlerConfig:
     
     history_file = os.path.join(os.getcwd(), "crawler_history.json")
     if use_history:
-        print(f"\nHistory file will be created at: {history_file}")
+        logger.info(f"History file will be created at: {history_file}")
     
     return CrawlerConfig(
         base_url=url,
@@ -769,32 +788,32 @@ def main() -> None:
             ('attr', search_value)
         ])
     
-    print("\n=== Crawler Configuration ===")
-    print(f"URL: {config.base_url}")
-    print(f"Searching for: {', '.join(config.search_values)}")
-    print(f"Maximum pages: {config.max_pages}")
-    print(f"Concurrent workers: {config.max_workers}")
-    print(f"Delay between requests: {config.sleep_time} seconds")
-    print(f"Request timeout: {config.timeout} seconds")
-    print(f"Maximum crawl depth: {config.max_depth}")
+    logger.info("=== Crawler Configuration ===")
+    logger.info(f"URL: {config.base_url}")
+    logger.info(f"Searching for: {', '.join(config.search_values)}")
+    logger.info(f"Maximum pages: {config.max_pages}")
+    logger.info(f"Concurrent workers: {config.max_workers}")
+    logger.info(f"Delay between requests: {config.sleep_time} seconds")
+    logger.info(f"Request timeout: {config.timeout} seconds")
+    logger.info(f"Maximum crawl depth: {config.max_depth}")
     
     if config.respect_robots:
-        print("Respecting robots.txt")
+        logger.info("Respecting robots.txt")
     if config.use_history:
-        print("Using history file to avoid duplicates")
+        logger.info("Using history file to avoid duplicates")
     if config.verbose:
-        print("Debug mode enabled")
+        logger.info("Debug mode enabled")
     if config.export_results:
-        print("Results will be exported to file")
+        logger.info("Results will be exported to file")
     
-    print("\nPress Ctrl+C to stop at any time")
+    logger.info("Press Ctrl+C to stop at any time")
     
     try:
         results = crawler.crawl_and_search(searches)
         
-        print("\n=== Search Results ===")
+        logger.info("=== Search Results ===")
         for search_value in config.search_values:
-            print(f"\nResults for '{search_value}':")
+            logger.info(f"Results for '{search_value}':")
             value_results = []
             
             for search_type in ['text', 'id', 'class', 'attr']:
@@ -816,28 +835,28 @@ def main() -> None:
                     unique_results.append((url, element))
             
             if unique_results:
-                print(f"Found {len(unique_results)} unique occurrence(s):")
+                logger.info(f"Found {len(unique_results)} unique occurrence(s):")
                 for url, element in unique_results:
                     print_element_info(element, url)
             else:
-                print("No elements found")
-                print("Note: The element might be:")
-                print("1. Not present on any crawled page")
-                print("2. On pages not yet crawled")
-                print("3. Dynamically loaded by JavaScript")
-                print("4. In a different format or have different attributes")
+                logger.info("No elements found")
+                logger.info("Note: The element might be:")
+                logger.info("1. Not present on any crawled page")
+                logger.info("2. On pages not yet crawled")
+                logger.info("3. Dynamically loaded by JavaScript")
+                logger.info("4. In a different format or have different attributes")
         
         if config.export_results:
             export_results_to_file(results, config.search_values)
             
     except KeyboardInterrupt:
-        print("\n\nCrawl interrupted by user. Stopping...")
+        logger.info("Crawl interrupted by user. Stopping...")
         crawler.stop()
-        print("Saving progress...")
+        logger.info("Saving progress...")
         crawler.save_history()
-        print("Crawl stopped successfully.")
+        logger.info("Crawl stopped successfully.")
     except Exception as e:
-        print(f"\n\nError during crawl: {str(e)}")
+        logger.error(f"Error during crawl: {str(e)}")
         crawler.save_history()
 
 if __name__ == "__main__":
