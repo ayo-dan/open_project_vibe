@@ -1,7 +1,7 @@
 [build]
-  base   = "ui"
+  base    = "ui"
   command = "npm run build"
-  publish = "ui/.next"
+  publish = ".next"
 
 [functions]
   directory = "netlify/functions"

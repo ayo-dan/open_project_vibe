@@ -87,7 +87,7 @@ The repo includes `_headers` and `_redirects` for Netlify as well as a
 `.env.example` to document build-time variables.
 
 The **new** `netlify.toml` file controls the deployment. The configuration below
-builds the Next.js frontend from the `ui/` directory, outputs to `ui/.next`, and
+builds the Next.js frontend from the `ui/` directory, outputs to `.next`, and
 serves serverless functions from `netlify/functions/` using the official
 Netlify Next.js plugin:
 
@@ -95,7 +95,7 @@ Netlify Next.js plugin:
 [build]
   base    = "ui"
   command = "npm run build"
-  publish = "ui/.next"
+  publish = ".next"
 
 [functions]
   directory = "netlify/functions"
