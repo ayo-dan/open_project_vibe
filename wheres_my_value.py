@@ -1,6 +1,9 @@
-#DESCRIPTION: This is a simple webcrawler that find values/strings/etc by searching through a domain and then its pages.
-#REASON: This script was originally created to locate a form by its ID on a company website that was getting hit with mass spam. The goal was to find the form by its ID via this script as opposed to looking through many different pages. Once found the form could have reCAPTCHA applied to it.
-#DISCLAIMER: This script was created with the help of Cursor (AI)
+"""Command line crawler used to locate values across a domain.
+
+Originally the script was written to find a specific form element by ID on a
+website suffering from spam.  The crawler searches pages for arbitrary values
+and outputs where matches are found.
+"""
 
 import logging
 import requests
@@ -33,6 +36,9 @@ SKIP_EXTENSIONS = {
     # Other
     '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map'
 }
+
+# Limit the number of links parsed from a page
+MAX_LINKS_PER_PAGE = 50
 
 # Default headers
 DEFAULT_HEADERS = {
@@ -222,10 +228,9 @@ class WebCrawler:
 
     def get_links(self, soup: BeautifulSoup, current_url: str, current_depth: int) -> Dict[str, int]:
         links = {}
-        max_links_per_page = 50
         try:
             for a_tag in soup.find_all('a', href=True):
-                if len(links) >= max_links_per_page:
+                if len(links) >= MAX_LINKS_PER_PAGE:
                     break
                 url = urljoin(current_url, a_tag['href'])
                 if self.is_valid_url(url) and current_depth < self.config.max_depth:
